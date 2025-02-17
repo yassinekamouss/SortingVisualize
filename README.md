@@ -7,8 +7,8 @@
 ## Installation
 1. Cloner le projet :
    ```sh
-   git clone https://github.com/ton-utilisateur/ton-projet.git
-   cd ton-projet
+   git clone https://github.com/yassinekamouss/SortingVisualize.git
+   cd SortingVisualize
    ```
 2. Installer les dépendances :
    ```sh
@@ -24,3 +24,5 @@
    ```
 
 Le projet sera accessible à `http://localhost:5173`.
+
+🔗 **Accédez à l'application ici** : [Visualiseur de Tri](https://sorting-visualizer-37e32b.netlify.app/)
