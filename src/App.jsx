@@ -10,6 +10,7 @@ const App = () => {
   const [order, setOrder] = useState('asc');
   const [isSorting, setIsSorting] = useState(false);
   const [currentIndices, setCurrentIndices] = useState([-1, -1]);
+  const [sleepTime, setSleepTime] = useState(100);
 
   // Générer un nouveau tableau
   const generateArray = () => {
@@ -35,7 +36,7 @@ const App = () => {
       let minIdx = i;
       for (let j = i + 1; j < n; j++) {
         setCurrentIndices([i, j]);
-        await sleep(100);
+        await sleep(sleepTime);
         if ((order === 'asc' && arr[j] < arr[minIdx]) || 
             (order === 'desc' && arr[j] > arr[minIdx])) {
           minIdx = j;
@@ -58,7 +59,7 @@ const App = () => {
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n - i - 1; j++) {
         setCurrentIndices([j, j + 1]);
-        await sleep(100);
+        await sleep(sleepTime);
         if ((order === 'asc' && arr[j] > arr[j + 1]) ||
             (order === 'desc' && arr[j] < arr[j + 1])) {
           [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
@@ -80,7 +81,7 @@ const App = () => {
 
       for (let j = start; j < end; j++) {
         setCurrentIndices([j, end]);
-        await sleep(100);
+        await sleep(sleepTime);
         if ((order === 'asc' && arr[j] <= pivot) ||
             (order === 'desc' && arr[j] >= pivot)) {
           i++;
@@ -113,7 +114,7 @@ const App = () => {
 
       while (i < left.length && j < right.length) {
         setCurrentIndices([start + i, mid + 1 + j]);
-        await sleep(100);
+        await sleep(sleepTime);
         if ((order === 'asc' && left[i] <= right[j]) ||
             (order === 'desc' && left[i] >= right[j])) {
           arr[k] = left[i];
@@ -131,7 +132,7 @@ const App = () => {
         i++;
         k++;
         setArray([...arr]);
-        await sleep(100);
+        await sleep(sleepTime);
       }
 
       while (j < right.length) {
@@ -139,7 +140,7 @@ const App = () => {
         j++;
         k++;
         setArray([...arr]);
-        await sleep(100);
+        await sleep(sleepTime);
       }
     };
 
@@ -161,7 +162,7 @@ const App = () => {
              ((order === 'asc' && arr[j] > current) ||
               (order === 'desc' && arr[j] < current))) {
         setCurrentIndices([j, j + 1]);
-        await sleep(100);
+        await sleep(sleepTime);
         arr[j + 1] = arr[j];
         j--;
         setArray([...arr]);
@@ -230,6 +231,13 @@ const App = () => {
                 <option value="asc">Croissant</option>
                 <option value="desc">Décroissant</option>
               </select>
+
+              <input 
+                type="range" 
+                className=''
+                max={250} 
+                value={sleepTime} 
+                onChange={(event) => setSleepTime(Number(event.target.value))} />
               
               <input 
                 type="number"
@@ -262,7 +270,7 @@ const App = () => {
             </div>
           </div>
           
-          <div className="h-64 flex items-end justify-center gap-1 mt-4">
+          <div className="h-96 flex items-end justify-center gap-1 mt-4">
             {array.map((value, idx) => (
               <div
                 key={idx}
