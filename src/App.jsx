@@ -1,290 +1,391 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Settings2, Play, Shuffle } from 'lucide-react';
 import Header from './Header';
 
-const App = () => {
-  const [array, setArray] = useState([]);
-  const [size, setSize] = useState(25);
-  const [algorithm, setAlgorithm] = useState('selection');
-  const [order, setOrder] = useState('asc');
-  const [isSorting, setIsSorting] = useState(false);
-  const [currentIndices, setCurrentIndices] = useState([-1, -1]);
-  const [sleepTime, setSleepTime] = useState(100);
+const ALGORITHMS = {
+  selection: "Tri par sélection",
+  bubble: "Tri à bulles",
+  quick: "Tri rapide",
+  merge: "Tri fusion"
+};
 
-  // Générer un nouveau tableau
-  const generateArray = () => {
-    const newArray = Array.from({ length: size }, () => 
-      Math.floor(Math.random() * 100) + 1
-    );
-    setArray(newArray);
+// Composant pour un élément du tableau avec des animations améliorées
+const ArrayElement = ({ 
+  value, 
+  index, 
+  position, 
+  isComparing, 
+  isSwapping,
+  totalElements 
+}) => {
+  // Calcul de la position relative basée sur l'index
+  const calculatePosition = () => {
+    const elementWidth = 64; // Largeur de l'élément
+    const gap = 16; // Espace entre les éléments
+    const totalWidth = (elementWidth + gap) * totalElements;
+    const startX = -(totalWidth / 2) + (elementWidth / 2);
+    
+    return {
+      x: startX + (index * (elementWidth + gap)),
+      y: 0
+    };
   };
+
+  const pos = calculatePosition();
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        x: pos.x,
+        y: pos.y,
+        transition: {
+          type: "spring",
+          stiffness: 300,
+          damping: 30
+        }
+      }}
+      exit={{ opacity: 0, scale: 0.5 }}
+      className={`
+        absolute w-16 h-16 
+        flex flex-col items-center justify-center
+        rounded-lg shadow-lg
+        ${isComparing ? 'bg-yellow-100 border-2 border-yellow-400' : 
+          isSwapping ? 'bg-green-100 border-2 border-green-400' : 
+          'bg-white border border-gray-200'}
+        transition-colors duration-200
+      `}
+    >
+      <span className="text-lg font-semibold">{value}</span>
+      <span className="absolute -bottom-6 text-xs text-gray-500">Index: {index}</span>
+    </motion.div>
+  );
+};
+
+const App = () => {
+  const [arrayData, setArrayData] = useState([]);
+  const [size, setSize] = useState(10);
+  const [algorithm, setAlgorithm] = useState('selection');
+  const [speed, setSpeed] = useState(50);
+  const [isSorting, setIsSorting] = useState(false);
+  const [comparingIndices, setComparingIndices] = useState([]);
+  const [swappingIndices, setSwappingIndices] = useState([]);
+
+  // Génération améliorée du tableau avec identifiants uniques
+  const generateArray = useCallback(() => {
+    const newArray = Array.from({ length: size }, (_, index) => ({
+      id: `element-${index}-${Date.now()}`,
+      value: Math.floor(Math.random() * 99) + 1,
+      index
+    }));
+    setArrayData(newArray);
+  }, [size]);
 
   useEffect(() => {
     generateArray();
-  }, [size]);
+  }, [size, generateArray]);
 
-  // Fonction utilitaire pour l'animation
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Tri par sélection
+  // Fonction de swap améliorée avec animation
+  const swap = async (arr, i, j) => {
+    setSwappingIndices([i, j]);
+    
+    const newArr = [...arr];
+    const temp = { ...newArr[i], index: j };
+    newArr[i] = { ...newArr[j], index: i };
+    newArr[j] = temp;
+    
+    setArrayData(newArr);
+    await sleep(300 - speed);
+    setSwappingIndices([]);
+    
+    return newArr;
+  };
+
+  const compare = async (i, j) => {
+    setComparingIndices([i, j]);
+    await sleep(300 - speed);
+    return arrayData[i].value > arrayData[j].value;
+  };
+
+  const bubbleSort = async () => {
+    let arr = [...arrayData];
+    const n = arr.length;
+    
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n - i - 1; j++) {
+        if (await compare(j, j + 1)) {
+          arr = await swap(arr, j, j + 1);
+        }
+      }
+    }
+    
+    setComparingIndices([]);
+    return arr;
+  };
+
   const selectionSort = async () => {
-    let arr = [...array];
+    let arr = [...arrayData];
     const n = arr.length;
     
     for (let i = 0; i < n; i++) {
       let minIdx = i;
       for (let j = i + 1; j < n; j++) {
-        setCurrentIndices([i, j]);
-        await sleep(sleepTime);
-        if ((order === 'asc' && arr[j] < arr[minIdx]) || 
-            (order === 'desc' && arr[j] > arr[minIdx])) {
+        setComparingIndices([minIdx, j]);
+        await sleep(300 - speed);
+        
+        if (arr[j].value < arr[minIdx].value) {
           minIdx = j;
         }
       }
       if (minIdx !== i) {
-        [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
-        setArray([...arr]);
+        arr = await swap(arr, i, minIdx);
       }
     }
-    setCurrentIndices([-1, -1]);
-    return arr;
-  };
-
-  // Tri à bulles
-  const bubbleSort = async () => {
-    let arr = [...array];
-    const n = arr.length;
     
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n - i - 1; j++) {
-        setCurrentIndices([j, j + 1]);
-        await sleep(sleepTime);
-        if ((order === 'asc' && arr[j] > arr[j + 1]) ||
-            (order === 'desc' && arr[j] < arr[j + 1])) {
-          [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
-          setArray([...arr]);
-        }
-      }
-    }
-    setCurrentIndices([-1, -1]);
+    setComparingIndices([]);
     return arr;
   };
 
-  // Tri rapide
   const quickSort = async (arr, start, end) => {
-    if (start >= end) return;
+    if (start >= end) return arr;
 
     const partition = async (arr, start, end) => {
-      const pivot = arr[end];
+      const pivotValue = arr[end].value;
       let i = start - 1;
 
       for (let j = start; j < end; j++) {
-        setCurrentIndices([j, end]);
-        await sleep(sleepTime);
-        if ((order === 'asc' && arr[j] <= pivot) ||
-            (order === 'desc' && arr[j] >= pivot)) {
+        setComparingIndices([j, end]);
+        await sleep(300 - speed);
+
+        if (arr[j].value <= pivotValue) {
           i++;
-          [arr[i], arr[j]] = [arr[j], arr[i]];
-          setArray([...arr]);
+          if (i !== j) {
+            arr = await swap(arr, i, j);
+          }
         }
       }
-      [arr[i + 1], arr[end]] = [arr[end], arr[i + 1]];
-      setArray([...arr]);
+
+      if (i + 1 !== end) {
+        arr = await swap(arr, i + 1, end);
+      }
+
       return i + 1;
     };
 
-    const pi = await partition(arr, start, end);
-    await quickSort(arr, start, pi - 1);
-    await quickSort(arr, pi + 1, end);
+    const pivotIndex = await partition(arr, start, end);
+    
+    // Récursion sur les sous-tableaux
+    const leftArr = await quickSort(arr, start, pivotIndex - 1);
+    const rightArr = await quickSort(leftArr, pivotIndex + 1, end);
+
+    return rightArr;
   };
 
-  // Tri fusion
+  // Tri fusion adapté
   const mergeSort = async (arr, start, end) => {
-    if (start >= end) return;
+    if (start >= end) return arr;
 
     const mid = Math.floor((start + end) / 2);
-    await mergeSort(arr, start, mid);
-    await mergeSort(arr, mid + 1, end);
+    
+    // Tri récursif des deux moitiés
+    const leftArr = await mergeSort(arr, start, mid);
+    const rightArr = await mergeSort(leftArr, mid + 1, end);
 
-    const merge = async (arr, start, mid, end) => {
-      const left = arr.slice(start, mid + 1);
-      const right = arr.slice(mid + 1, end + 1);
-      let i = 0, j = 0, k = start;
-
-      while (i < left.length && j < right.length) {
-        setCurrentIndices([start + i, mid + 1 + j]);
-        await sleep(sleepTime);
-        if ((order === 'asc' && left[i] <= right[j]) ||
-            (order === 'desc' && left[i] >= right[j])) {
-          arr[k] = left[i];
-          i++;
-        } else {
-          arr[k] = right[j];
-          j++;
-        }
-        k++;
-        setArray([...arr]);
-      }
-
-      while (i < left.length) {
-        arr[k] = left[i];
-        i++;
-        k++;
-        setArray([...arr]);
-        await sleep(sleepTime);
-      }
-
-      while (j < right.length) {
-        arr[k] = right[j];
-        j++;
-        k++;
-        setArray([...arr]);
-        await sleep(sleepTime);
-      }
-    };
-
-    await merge(arr, start, mid, end);
+    // Fusion
+    return await merge(rightArr, start, mid, end);
   };
 
-  // Tri topologique
-  const topologicalSort = async () => {
-    // Pour cet exemple, nous allons simuler un tri topologique
-    // en utilisant une version modifiée du tri par insertion
-    let arr = [...array];
-    const n = arr.length;
+  const merge = async (arr, start, mid, end) => {
+    const merged = [...arr];
+    let leftIndex = start;
+    let rightIndex = mid + 1;
+    let mergeIndex = start;
 
-    for (let i = 1; i < n; i++) {
-      let current = arr[i];
-      let j = i - 1;
-      
-      while (j >= 0 && 
-             ((order === 'asc' && arr[j] > current) ||
-              (order === 'desc' && arr[j] < current))) {
-        setCurrentIndices([j, j + 1]);
-        await sleep(sleepTime);
-        arr[j + 1] = arr[j];
-        j--;
-        setArray([...arr]);
+    while (leftIndex <= mid && rightIndex <= end) {
+      setComparingIndices([leftIndex, rightIndex]);
+      await sleep(300 - speed);
+
+      if (arr[leftIndex].value <= arr[rightIndex].value) {
+        merged[mergeIndex] = {
+          ...arr[leftIndex],
+          index: mergeIndex
+        };
+        leftIndex++;
+      } else {
+        merged[mergeIndex] = {
+          ...arr[rightIndex],
+          index: mergeIndex
+        };
+        rightIndex++;
       }
-      arr[j + 1] = current;
-      setArray([...arr]);
+      mergeIndex++;
+      setArrayData([...merged]);
     }
-    setCurrentIndices([-1, -1]);
-    return arr;
+
+    // Copie des éléments restants
+    while (leftIndex <= mid) {
+      merged[mergeIndex] = {
+        ...arr[leftIndex],
+        index: mergeIndex
+      };
+      leftIndex++;
+      mergeIndex++;
+      setArrayData([...merged]);
+      await sleep(300 - speed);
+    }
+
+    while (rightIndex <= end) {
+      merged[mergeIndex] = {
+        ...arr[rightIndex],
+        index: mergeIndex
+      };
+      rightIndex++;
+      mergeIndex++;
+      setArrayData([...merged]);
+      await sleep(300 - speed);
+    }
+
+    return merged;
   };
 
+  // Modification de la fonction startSort
   const startSort = async () => {
     setIsSorting(true);
-    const arr = [...array];
     
-    switch (algorithm) {
-      case 'selection':
-        await selectionSort();
-        break;
-      case 'bubble':
-        await bubbleSort();
-        break;
-      case 'quick':
-        await quickSort(arr, 0, arr.length - 1);
-        break;
-      case 'merge':
-        await mergeSort(arr, 0, arr.length - 1);
-        break;
-      case 'topological':
-        await topologicalSort();
-        break;
+    try {
+      let sortedArray;
+      switch (algorithm) {
+        case 'bubble':
+          sortedArray = await bubbleSort();
+          break;
+        case 'selection':
+          sortedArray = await selectionSort();
+          break;
+        case 'quick':
+          sortedArray = await quickSort([...arrayData], 0, arrayData.length - 1);
+          break;
+        case 'merge':
+          sortedArray = await mergeSort([...arrayData], 0, arrayData.length - 1);
+          break;
+      }
+      setArrayData(sortedArray);
+    } finally {
+      setIsSorting(false);
+      setComparingIndices([]);
+      setSwappingIndices([]);
     }
-    
-    setIsSorting(false);
   };
 
   return (
-    <>
+    <div className='h-screen bg-gray-100'>
       <Header />
-      <Card className="w-full max-w-5xl mx-auto mt-8">
+      <Card className="w-full max-w-6xl mx-auto mt-8">
         <CardHeader>
-          <CardTitle>Visualisateur d'Algorithmes de Tri</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Settings2 className="w-6 h-6" />
+            Visualiseur d'Algorithmes de Tri Avancé
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-between items-center">
-            <div className='flex gap-4'>
-              <select 
-                className="p-2 border rounded"
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-4 gap-4">
+              <Select
                 value={algorithm}
-                onChange={(e) => setAlgorithm(e.target.value)}
+                onValueChange={setAlgorithm}
                 disabled={isSorting}
               >
-                <option value="selection">Tri par sélection</option>
-                <option value="bubble">Tri à bulles</option>
-                <option value="quick">Tri rapide</option>
-                <option value="merge">Tri fusion</option>
-                <option value="topological">Tri topologique</option>
-              </select>
-              
-              <select 
-                className="p-2 border rounded"
-                value={order}
-                onChange={(e) => setOrder(e.target.value)}
-                disabled={isSorting}
-              >
-                <option value="asc">Croissant</option>
-                <option value="desc">Décroissant</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un algorithme" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ALGORITHMS).map(([key, value]) => (
+                    <SelectItem key={key} value={key}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <input 
-                type="range" 
-                className=''
-                max={250} 
-                value={sleepTime} 
-                onChange={(event) => setSleepTime(Number(event.target.value))} />
-              
-              <input 
-                type="number"
-                className="p-2 border rounded w-24"
-                value={size}
-                onChange={(e) => setSize(parseInt(e.target.value))}
-                min="5"
-                max="50"
-                disabled={isSorting}
-              />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">Taille:</span>
+                <Input
+                  type="number"
+                  value={size}
+                  onChange={(e) => setSize(Math.min(13, Math.max(5, parseInt(e.target.value) || 5)))}
+                  className="w-20"
+                  min="5"
+                  max="13"
+                  disabled={isSorting}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">Vitesse:</span>
+                <Slider
+                  value={[speed]}
+                  onValueChange={([value]) => setSpeed(value)}
+                  min={0}
+                  max={250}
+                  step={10}
+                  disabled={isSorting}
+                  className="w-32"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={generateArray}
+                  disabled={isSorting}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Shuffle className="w-4 h-4" />
+                  Mélanger
+                </Button>
+                
+                <Button
+                  onClick={startSort}
+                  disabled={isSorting}
+                  className="flex items-center gap-2 bg-green-500 hover:bg-green-600"
+                >
+                  <Play className="w-4 h-4" />
+                  Trier
+                </Button>
+              </div>
             </div>
 
-            
-            <div className='flex gap-4'>
-              <Button 
-                onClick={generateArray}
-                disabled={isSorting}
-                className="bg-black text-white"
-              >
-                Nouveau Tableau
-              </Button>
-              
-              <Button 
-                onClick={startSort}
-                disabled={isSorting}
-                className="bg-green-500 text-white"
-              >
-                Démarrer le Tri
-              </Button>
+            <div className="relative h-80 w-full bg-gray-50 rounded-xl overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <AnimatePresence mode="sync">
+                  {arrayData.map((item) => (
+                    <ArrayElement
+                      key={item.id}
+                      value={item.value}
+                      index={item.index}
+                      position={item.index}
+                      isComparing={comparingIndices.includes(item.index)}
+                      isSwapping={swappingIndices.includes(item.index)}
+                      totalElements={arrayData.length}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
             </div>
-          </div>
-          
-          <div className="h-96 flex items-end justify-center gap-1 mt-4">
-            {array.map((value, idx) => (
-              <div
-                key={idx}
-                className="w-8 bg-blue-500 transition-all duration-100"
-                style={{
-                  height: `${value}%`,
-                  backgroundColor: currentIndices.includes(idx) ? '#ef4444' : '#3b82f6'
-                }}
-              />
-            ))}
           </div>
         </CardContent>
       </Card>
-    </>
+  </div>
   );
 };
 
