@@ -72,7 +72,8 @@ const ArrayElement = ({
 };
 
 const App = () => {
-  const [arrayData, setArrayData] = useState([]);
+
+const [arrayData, setArrayData] = useState([]);
   const [size, setSize] = useState(10);
   const [algorithm, setAlgorithm] = useState('selection');
   const [speed, setSpeed] = useState(50);
@@ -80,7 +81,6 @@ const App = () => {
   const [comparingIndices, setComparingIndices] = useState([]);
   const [swappingIndices, setSwappingIndices] = useState([]);
 
-  // Génération améliorée du tableau avec identifiants uniques
   const generateArray = useCallback(() => {
     const newArray = Array.from({ length: size }, (_, index) => ({
       id: `element-${index}-${Date.now()}`,
@@ -96,42 +96,107 @@ const App = () => {
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+  // Nouvelle fonction pour visualiser la comparaison
+  const visualizeCompare = async (i, j) => {
+    setComparingIndices([i, j]);
+    await sleep(300 - speed);
+    setComparingIndices([]);
+  };
+
   // Fonction de swap améliorée avec animation
   const swap = async (arr, i, j) => {
     setSwappingIndices([i, j]);
+    await sleep(300 - speed);
     
     const newArr = [...arr];
-    const temp = { ...newArr[i], index: j };
-    newArr[i] = { ...newArr[j], index: i };
-    newArr[j] = temp;
+    const tempId = newArr[i].id;
+    const tempValue = newArr[i].value;
+    
+    newArr[i] = {
+      id: newArr[j].id,
+      value: newArr[j].value,
+      index: i
+    };
+    
+    newArr[j] = {
+      id: tempId,
+      value: tempValue,
+      index: j
+    };
     
     setArrayData(newArr);
-    await sleep(300 - speed);
     setSwappingIndices([]);
     
     return newArr;
+  };
+  
+  // Tri à bulles corrigé
+  const bubbleSort = async () => {
+    let arr = [...arrayData];
+    const n = arr.length;
+    
+    for (let i = 0; i < n - 1; i++) {
+      let hasSwapped = false;
+      
+      for (let j = 0; j < n - i - 1; j++) {
+        await visualizeCompare(j, j + 1);
+        
+        if (arr[j].value > arr[j + 1].value) {
+          arr = await swap(arr, j, j + 1);
+          hasSwapped = true;
+        }
+      }
+      
+      if (!hasSwapped) break;
+    }
+    
+    return arr;
+  };
+  
+  // Tri rapide corrigé
+  const quickSort = async (arr, low, high) => {
+    const stack = [{low, high}];
+    
+    while (stack.length > 0) {
+      const {low, high} = stack.pop();
+      
+      if (low < high) {
+        const pivot = arr[high].value;
+        let i = low - 1;
+        
+        for (let j = low; j < high; j++) {
+          await visualizeCompare(j, high);
+          
+          if (arr[j].value < pivot) {
+            i++;
+            if (i !== j) {
+              arr = await swap(arr, i, j);
+            }
+          }
+        }
+        
+        const pivotIndex = i + 1;
+        if (pivotIndex !== high) {
+          arr = await swap(arr, pivotIndex, high);
+        }
+        
+        // Ajout des sous-tableaux à la pile
+        if (pivotIndex - 1 > low) {
+          stack.push({low, high: pivotIndex - 1});
+        }
+        if (pivotIndex + 1 < high) {
+          stack.push({low: pivotIndex + 1, high});
+        }
+      }
+    }
+    
+    return arr;
   };
 
   const compare = async (i, j) => {
     setComparingIndices([i, j]);
     await sleep(300 - speed);
     return arrayData[i].value > arrayData[j].value;
-  };
-
-  const bubbleSort = async () => {
-    let arr = [...arrayData];
-    const n = arr.length;
-    
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n - i - 1; j++) {
-        if (await compare(j, j + 1)) {
-          arr = await swap(arr, j, j + 1);
-        }
-      }
-    }
-    
-    setComparingIndices([]);
-    return arr;
   };
 
   const selectionSort = async () => {
@@ -155,41 +220,6 @@ const App = () => {
     
     setComparingIndices([]);
     return arr;
-  };
-
-  const quickSort = async (arr, start, end) => {
-    if (start >= end) return arr;
-
-    const partition = async (arr, start, end) => {
-      const pivotValue = arr[end].value;
-      let i = start - 1;
-
-      for (let j = start; j < end; j++) {
-        setComparingIndices([j, end]);
-        await sleep(300 - speed);
-
-        if (arr[j].value <= pivotValue) {
-          i++;
-          if (i !== j) {
-            arr = await swap(arr, i, j);
-          }
-        }
-      }
-
-      if (i + 1 !== end) {
-        arr = await swap(arr, i + 1, end);
-      }
-
-      return i + 1;
-    };
-
-    const pivotIndex = await partition(arr, start, end);
-    
-    // Récursion sur les sous-tableaux
-    const leftArr = await quickSort(arr, start, pivotIndex - 1);
-    const rightArr = await quickSort(leftArr, pivotIndex + 1, end);
-
-    return rightArr;
   };
 
   // Tri fusion adapté
@@ -262,9 +292,10 @@ const App = () => {
   // Modification de la fonction startSort
   const startSort = async () => {
     setIsSorting(true);
-    
     try {
       let sortedArray;
+      const arr = [...arrayData];
+      
       switch (algorithm) {
         case 'bubble':
           sortedArray = await bubbleSort();
@@ -273,12 +304,15 @@ const App = () => {
           sortedArray = await selectionSort();
           break;
         case 'quick':
-          sortedArray = await quickSort([...arrayData], 0, arrayData.length - 1);
+          sortedArray = await quickSort(arr, 0, arr.length - 1);
           break;
         case 'merge':
-          sortedArray = await mergeSort([...arrayData], 0, arrayData.length - 1);
+          sortedArray = await mergeSort(arr, 0, arr.length - 1);
           break;
+        default:
+          sortedArray = arr;
       }
+      
       setArrayData(sortedArray);
     } finally {
       setIsSorting(false);
