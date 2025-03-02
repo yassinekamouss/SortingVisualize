@@ -1,7 +1,7 @@
 # Visualiseur De Tri  React.js avec Vite, ShadCN et Tailwind
 
 ## Capture d'écran
-![capteure d'écran]()
+![capteure d'écran](https://github.com/yassinekamouss/SortingVisualize/blob/b2b858e97d75a6ab8ed64171713d695a397e1d69/Capture%20d'%C3%A9cran%202025-03-02%20130105.png)
 
 ## Prérequis
 - Node.js (version recommandée : 18 ou supérieure)
