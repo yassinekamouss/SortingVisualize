@@ -24,10 +24,10 @@ const ArrayElement = ({
   isSwapping,
   totalElements 
 }) => {
-  // Calcul de la position relative basée sur l'index
   const calculatePosition = () => {
-    const elementWidth = 64; // Largeur de l'élément
-    const gap = 16; // Espace entre les éléments
+    // Réduire la taille et l'espacement sur mobile
+    const elementWidth = window.innerWidth < 640 ? 32 : 64; // Encore plus petit sur mobile
+    const gap = window.innerWidth < 640 ? 4 : 16; // Espacement plus réduit sur mobile
     const totalWidth = (elementWidth + gap) * totalElements;
     const startX = -(totalWidth / 2) + (elementWidth / 2);
     
@@ -56,7 +56,7 @@ const ArrayElement = ({
       }}
       exit={{ opacity: 0, scale: 0.5 }}
       className={`
-        absolute w-16 h-16 
+        absolute w-8 h-8 sm:w-16 sm:h-16 
         flex flex-col items-center justify-center
         rounded-lg shadow-lg
         ${isComparing ? 'bg-yellow-100 border-2 border-yellow-400' : 
@@ -65,16 +65,16 @@ const ArrayElement = ({
         transition-colors duration-200
       `}
     >
-      <span className="text-lg font-semibold">{value}</span>
-      <span className="absolute -bottom-6 text-xs text-gray-500">Index: {index}</span>
+      <span className="text-xs sm:text-lg font-semibold">{value}</span>
+      <span className="absolute -bottom-3 sm:-bottom-6 text-[8px] sm:text-xs text-gray-500">Index: {index}</span>
     </motion.div>
   );
 };
 
 const App = () => {
 
-const [arrayData, setArrayData] = useState([]);
-  const [size, setSize] = useState(10);
+  const [arrayData, setArrayData] = useState([]);
+  const [size, setSize] = useState(window.innerWidth < 640 ? 5 : 10);
   const [algorithm, setAlgorithm] = useState('selection');
   const [speed, setSpeed] = useState(50);
   const [isSorting, setIsSorting] = useState(false);
@@ -91,8 +91,17 @@ const [arrayData, setArrayData] = useState([]);
   }, [size]);
 
   useEffect(() => {
-    generateArray();
-  }, [size, generateArray]);
+    const handleResize = () => {
+      if (window.innerWidth < 640 && size > 5) {
+        setSize(5);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Appel initial
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -322,25 +331,25 @@ const [arrayData, setArrayData] = useState([]);
   };
 
   return (
-    <div className='h-screen bg-gray-100'>
+    <div className='min-h-screen bg-gray-100'>
       <Header />
-      <Card className="w-full max-w-6xl mx-auto mt-8">
+      <Card className="w-[95%] max-w-6xl mx-auto mt-4 sm:mt-8">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings2 className="w-6 h-6" />
-            Visualiseur d'Algorithmes de Tri Avancé
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Settings2 className="w-5 h-5 sm:w-6 sm:h-6" />
+            Visualiseur d'Algorithmes de Tri
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-4 gap-4">
+          <div className="flex flex-col gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <Select
                 value={algorithm}
                 onValueChange={setAlgorithm}
                 disabled={isSorting}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un algorithme" />
+                  <SelectValue placeholder="Sélectionner" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(ALGORITHMS).map(([key, value]) => (
@@ -352,7 +361,7 @@ const [arrayData, setArrayData] = useState([]);
               </Select>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Taille:</span>
+                <span className="text-xs sm:text-sm text-gray-500">Taille:</span>
                 <Input
                   type="number"
                   value={size}
@@ -365,7 +374,7 @@ const [arrayData, setArrayData] = useState([]);
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Vitesse:</span>
+                <span className="text-xs sm:text-sm text-gray-500">Vitesse:</span>
                 <Slider
                   value={[speed]}
                   onValueChange={([value]) => setSpeed(value)}
@@ -382,24 +391,24 @@ const [arrayData, setArrayData] = useState([]);
                   onClick={generateArray}
                   disabled={isSorting}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1 text-sm"
                 >
-                  <Shuffle className="w-4 h-4" />
+                  <Shuffle className="w-3 h-3 sm:w-4 sm:h-4" />
                   Mélanger
                 </Button>
                 
                 <Button
                   onClick={startSort}
                   disabled={isSorting}
-                  className="flex items-center gap-2 bg-green-500 hover:bg-green-600"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1 text-sm bg-green-500 hover:bg-green-600"
                 >
-                  <Play className="w-4 h-4" />
+                  <Play className="w-3 h-3 sm:w-4 sm:h-4" />
                   Trier
                 </Button>
               </div>
             </div>
 
-            <div className="relative h-80 w-full bg-gray-50 rounded-xl overflow-hidden">
+            <div className="relative h-60 sm:h-80 w-full bg-gray-50 rounded-xl overflow-hidden">
               <div className="absolute inset-0 flex items-center justify-center">
                 <AnimatePresence mode="sync">
                   {arrayData.map((item) => (
@@ -419,8 +428,8 @@ const [arrayData, setArrayData] = useState([]);
           </div>
         </CardContent>
       </Card>
-  </div>
-  );
-};
+    </div>
+);
+}
 
 export default App;
