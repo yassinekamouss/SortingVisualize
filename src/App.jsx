@@ -15,19 +15,36 @@ const ALGORITHMS = {
   merge: "Tri fusion"
 };
 
+const useWindowSize = () => {
+  const [windowSize, setWindowSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 640,
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return windowSize;
+};
+
 // Composant pour un élément du tableau avec des animations améliorées
-const ArrayElement = ({ 
-  value, 
-  index, 
-  position, 
-  isComparing, 
-  isSwapping,
-  totalElements 
-}) => {
+const ArrayElement = ({ value, index, position, isComparing, isSwapping, totalElements }) => {
+  const { width } = useWindowSize();
+  
   const calculatePosition = () => {
-    // Réduire la taille et l'espacement sur mobile
-    const elementWidth = window.innerWidth < 640 ? 32 : 64; // Encore plus petit sur mobile
-    const gap = window.innerWidth < 640 ? 4 : 16; // Espacement plus réduit sur mobile
+    const elementWidth = width < 640 ? 32 : 64;
+    const gap = width < 640 ? 4 : 16;
     const totalWidth = (elementWidth + gap) * totalElements;
     const startX = -(totalWidth / 2) + (elementWidth / 2);
     
@@ -73,7 +90,10 @@ const ArrayElement = ({
 
 const App = () => {
 
+  const { width } = useWindowSize();
+  const initialSize = width < 640 ? 5 : 10;
   const [arrayData, setArrayData] = useState([]);
+  // const [size, setSize] = useState(initialSize);
   const [size, setSize] = useState(window.innerWidth < 640 ? 5 : 10);
   const [algorithm, setAlgorithm] = useState('selection');
   const [speed, setSpeed] = useState(50);
@@ -91,16 +111,15 @@ const App = () => {
   }, [size]);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 640 && size > 5) {
-        setSize(5);
-      }
-    };
+    if (width < 640 && size > 5) {
+      setSize(5);
+    }
+  }, [width, size]);
 
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Appel initial
-
-    return () => window.removeEventListener('resize', handleResize);
+  useEffect(() => {
+    if (arrayData.length === 0) {
+      generateArray();
+    }
   }, []);
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
