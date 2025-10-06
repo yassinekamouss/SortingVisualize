@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/TON_USER/TON_REPO.git'
+                git branch: 'main', url: 'https://github.com/yassinekamouss/SortingVisualize.git'
             }
         }
 
